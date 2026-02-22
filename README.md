@@ -35,6 +35,8 @@ I will use EKS, AWS's managed Kubernetes service, to deploy my 3-tier applicatio
 | 9 | [Step 7 — Create Ingress & Expose the App](#step-7--create-ingress--expose-the-app) |
 | 10 | [Step 8 — Map a Custom Domain (Route 53)](#step-8--map-a-custom-domain-route-53) |
 
+---
+
 ## 🏗 Architecture Overview
 
 ```
