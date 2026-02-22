@@ -229,8 +229,8 @@ Once created, note these values (you'll need them later):
 ### 4.1 — Clone the Repo
 
 ```bash
-git clone https://github.com/NotHarshhaa/DevOps-Projects/DevOps-Project-36/3-tier-app-eks
-cd 3-tier-app-eks/k8s
+git clone https://github.com/Hemanshubt/cloud-native-3tier-app-eks
+cd cloud-native-3tier-app-eks/3-tier-app-eks/k8s
 tree .
 ```
 
