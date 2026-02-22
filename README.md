@@ -1,8 +1,22 @@
-# 🚀 3-Tier Application on AWS EKS
-
-> **Deploy a production-ready React + Flask + PostgreSQL (RDS) application on Amazon EKS with ALB Ingress, Route 53, OIDC & IAM.**
+# 🚀 3-Tier Application Deployment on AWS EKS
 
 ![banner](https://miro.medium.com/v2/resize:fit:4800/format:webp/1*PB6jgC5b4bO0T3F-InbOLw.png)
+
+I'll deploy a detailed 3-tier application on an EKS cluster. The application consists of a React frontend for the user interface, a Flask backend API for business logic, and a private connection to an RDS PostgreSQL database for persistent storage.
+
+To expose the application publicly, I'll implement the AWS Load Balancer Controller to automatically provision and configure an Application Load Balancer through Kubernetes Ingress resources. I will use Kubernetes Secrets to store sensitive database credentials and ConfigMaps for configuration.
+
+---
+
+## **Why the heck Kubernetes?**
+
+If you're in the tech space in 2025, you must have heard the term Kubernetes. If you haven't, then something isn't right — check if you've been sleeping for the last decade!
+
+Jokes apart, Kubernetes has become an incredibly popular tool for running large-scale, containerized applications or microservices with ease. If you want to stay relevant in your job as a DevOps engineer, SRE, or developer, you must know how to work with Kubernetes.
+
+Setting up and running Kubernetes can be complex, which is why most popular public cloud providers offer Kubernetes managed services. The most polular ones are EKS (AWS), GKE (GCP), and AKS (Azure).
+
+I will use EKS, AWS's managed Kubernetes service, to deploy my 3-tier application.
 
 ---
 
@@ -20,9 +34,6 @@
 | 8 | [Step 6 — Set Up ALB Ingress Controller](#step-6--set-up-alb-ingress-controller) |
 | 9 | [Step 7 — Create Ingress & Expose the App](#step-7--create-ingress--expose-the-app) |
 | 10 | [Step 8 — Map a Custom Domain (Route 53)](#step-8--map-a-custom-domain-route-53) |
-| 11 | [Author & Community](#-author--community) |
-
----
 
 ## 🏗 Architecture Overview
 
