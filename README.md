@@ -89,11 +89,15 @@ eksctl create cluster \
 > [!NOTE]
 > This runs a CloudFormation stack that creates a **new VPC**, subnets, NAT Gateway, and the EKS cluster.
 
+![CloudFormation Output](https://miro.medium.com/v2/resize:fit:700/1*UxyId72AVYTLINj67y5b4w.png)
+
 Verify the cluster was created:
 
 ```bash
 aws eks list-clusters
 ```
+
+![List Clusters](https://miro.medium.com/v2/resize:fit:700/1*nSlESN3rUF7DArDvuvlnGQ.png)
 
 ---
 
@@ -108,9 +112,16 @@ aws eks update-kubeconfig --name $cluster_name --region eu-west-1
 
 # Verify connection
 kubectl config current-context
+```
+
+![Kubeconfig Context](https://miro.medium.com/v2/resize:fit:700/1*gDUzKv5n3fcotKZvhavHNA.png)
+
+```bash
 kubectl get nodes
 kubectl get pods -A
 ```
+
+![Cluster Status](https://miro.medium.com/v2/resize:fit:700/1*L7W8OJm6VkRED79jmsCqIA.png)
 
 ---
 
@@ -126,14 +137,6 @@ The database lives in the **same VPC** as EKS, in **private subnets** only.
 VPC_ID=$(aws eks describe-cluster --name Akhilesh-cluster --region eu-west-1 \
   --query "cluster.resourcesVpcConfig.vpcId" --output text)
 
-# Find private subnets
-PRIVATE_SUBNET_IDS=$(aws ec2 describe-subnets \
-  --filters "Name=vpc-id,Values=$VPC_ID" \
-  --query "Subnets[?MapPublicIpOnLaunch==\`false\`].SubnetId" \
-  --output text --region eu-west-1)
-
-echo "Private subnets: $PRIVATE_SUBNET_IDS"
-
 # Create subnet group (replace subnet IDs with your own)
 aws rds create-db-subnet-group \
   --db-subnet-group-name akhilesh-postgres-private-subnet-group \
@@ -141,6 +144,8 @@ aws rds create-db-subnet-group \
   --subnet-ids <SUBNET_1> <SUBNET_2> <SUBNET_3> \
   --region eu-west-1
 ```
+
+![Subnet Group Creation](https://miro.medium.com/v2/resize:fit:700/1*Xi42TFn0ibPh2vVN5Rpo3Q.png)
 
 </details>
 
@@ -154,7 +159,11 @@ aws ec2 create-security-group \
   --description "SG for RDS" \
   --vpc-id $VPC_ID \
   --region eu-west-1
+```
 
+![Security Group Output](https://miro.medium.com/v2/resize:fit:700/1*pATG5bx1ZnNStfH6lEDIUw.png)
+
+```bash
 # Get the new SG ID
 SG_ID=$(aws ec2 describe-security-groups \
   --filters "Name=group-name,Values=postgressg" "Name=vpc-id,Values=$VPC_ID" \
@@ -172,6 +181,8 @@ aws ec2 authorize-security-group-ingress \
   --source-group $NODE_SG \
   --region eu-west-1
 ```
+
+![Ingress Rule](https://miro.medium.com/v2/resize:fit:700/1*sczI87XY2YEOJMOiuQjOfQ.png)
 
 </details>
 
@@ -196,11 +207,15 @@ aws rds create-db-instance \
   --region eu-west-1
 ```
 
+![RDS Instance Creation](https://miro.medium.com/v2/resize:fit:700/1*Ali7XP8Gb1P-q4RzKrMs9A.png)
+
+![RDS Status](https://miro.medium.com/v2/resize:fit:700/1*6wbcsMhKhv43p-6renC1cQ.png)
+
 Once created, note these values (you'll need them later):
 
 | Parameter | Value |
 |-----------|-------|
-| `DB_HOST` | `akhilesh-postgres.<id>.eu-west-1.rds.amazonaws.com` *(from RDS console)* |
+| `DB_HOST` | `akhilesh-postgres.cveph9nmftjh.eu-west-1.rds.amazonaws.com` *(Find yours in RDS Console)* |
 | `DB_NAME` | `postgres` |
 | `USERNAME` | `postgresadmin` |
 | `PASSWORD` | `YourStrongPassword123!` |
@@ -216,13 +231,18 @@ Once created, note these values (you'll need them later):
 ```bash
 git clone https://github.com/NotHarshhaa/DevOps-Projects/DevOps-Project-36/3-tier-app-eks
 cd 3-tier-app-eks/k8s
+tree .
 ```
+
+![Repo Structure](https://miro.medium.com/v2/resize:fit:700/1*IgAei8zoASURyRSWsIGNcw.png)
 
 ### 4.2 — Create the Namespace
 
 ```bash
 kubectl apply -f namespace.yaml
 ```
+
+![Namespace Created](https://miro.medium.com/v2/resize:fit:700/1*cgoHW2c2f4ga6uaAofPWAA.png)
 
 ### 4.3 — Create an ExternalName Service for RDS
 
@@ -232,25 +252,13 @@ This lets pods reach RDS via Kubernetes DNS (`postgres-db.3-tier-app-eks.svc.clu
 kubectl apply -f database-service.yaml
 ```
 
-<details>
-<summary>View the manifest — <code>database-service.yaml</code></summary>
+![Database Service](https://miro.medium.com/v2/resize:fit:700/1*bXl_GZch0YDUBgEL0fVxDw.png)
 
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: postgres-db
-  namespace: 3-tier-app-eks
-  labels:
-    service: database
-spec:
-  type: ExternalName
-  externalName: akhilesh-postgres.<id>.eu-west-1.rds.amazonaws.com  # ← your RDS endpoint
-  ports:
-  - port: 5432
-```
+> [!TIP]
+> You can test DNS resolution using:
+> `kubectl run -it --rm --restart=Never dns-test --image=tutum/dnsutils -- dig postgres-db.3-tier-app-eks.svc.cluster.local`
 
-</details>
+![DNS Test](https://miro.medium.com/v2/resize:fit:700/1*och_4GdddRKMk843D0cWJQ.png)
 
 ### 4.4 — Create Secrets & ConfigMap
 
@@ -258,11 +266,17 @@ spec:
 # Generate base64 values
 echo -n 'postgresadmin' | base64
 echo -n 'YourStrongPassword123!' | base64
+```
 
+![Base64 Encoding](https://miro.medium.com/v2/resize:fit:700/1*XDr5pzATja4yo9j5HVeRag.png)
+
+```bash
 # Apply
 kubectl apply -f secrets.yaml
 kubectl apply -f configmap.yaml
 ```
+
+![ConfigMap/Secret Applied](https://miro.medium.com/v2/resize:fit:700/1*tEFK5HrgKtt8svaaC71WFA.png)
 
 ### 4.5 — Run Database Migration Job
 
@@ -275,17 +289,25 @@ kubectl get pods -n 3-tier-app-eks
 kubectl logs <migration-pod-name> -n 3-tier-app-eks
 ```
 
+![Migration Job](https://miro.medium.com/v2/resize:fit:700/1*BRAgSEqM3MpMdhzRILhUnw.png)
+
 ### 4.6 — Deploy Backend & Frontend
 
 ```bash
 kubectl apply -f backend.yaml
 kubectl apply -f frontend.yaml
+```
 
+![Deployments Applied](https://miro.medium.com/v2/resize:fit:700/1*-tMqfKLQta4X4poJC1nSNA.png)
+
+```bash
 # Verify everything is running
 kubectl get deployment -n 3-tier-app-eks
 kubectl get svc -n 3-tier-app-eks
 kubectl get pods -n 3-tier-app-eks
 ```
+
+![Pods & Services](https://miro.medium.com/v2/resize:fit:700/1*7EOcnII-zIyQFSwcsk5q1g.png)
 
 ---
 
@@ -301,10 +323,16 @@ kubectl port-forward -n 3-tier-app-eks svc/backend 8000:8000
 kubectl port-forward -n 3-tier-app-eks svc/frontend 8080:80
 ```
 
+![Port Forwarding](https://miro.medium.com/v2/resize:fit:700/1*_AXwf7qnfTBKpxhFtHb7mQ.png)
+
 | Service | URL |
 |---------|-----|
 | Backend API | `http://localhost:8000/api/topics` |
 | Frontend UI | `http://localhost:8080` |
+
+![API Output](https://miro.medium.com/v2/resize:fit:700/1*cPCOlZjFHoaiMBAukB3YCA.png)
+
+![Frontend UI](https://miro.medium.com/v2/resize:fit:700/1*WYC1cw1fPxwEvqU72N3e9Q.png)
 
 ---
 
@@ -319,25 +347,11 @@ export cluster_name=Akhilesh-cluster
 oidc_id=$(aws eks describe-cluster --name $cluster_name \
   --query "cluster.identity.oidc.issuer" --output text | cut -d '/' -f 5)
 
-# Check if OIDC is already associated
-aws iam list-open-id-connect-providers | grep $oidc_id
-
 # If not, create it
 eksctl utils associate-iam-oidc-provider --cluster $cluster_name --approve
 ```
 
-</details>
-
-<details>
-<summary><b>6.2 — Create IAM Policy for the LB Controller</b></summary>
-
-```bash
-curl -O https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.11.0/docs/install/iam_policy.json
-
-aws iam create-policy \
-  --policy-name AWSLoadBalancerControllerIAMPolicy \
-  --policy-document file://iam_policy.json
-```
+![OIDC Created](https://miro.medium.com/v2/resize:fit:700/1*f8HmizOKvNog9nMtBsP5yQ.png)
 
 </details>
 
@@ -352,36 +366,9 @@ eksctl create iamserviceaccount \
   --role-name AmazonEKSLoadBalancerControllerRole \
   --attach-policy-arn=arn:aws:iam::<YOUR_ACCOUNT_ID>:policy/AWSLoadBalancerControllerIAMPolicy \
   --approve
-
-# Verify
-kubectl get serviceaccount -n kube-system | grep aws-load-balancer-controller
 ```
 
-</details>
-
-<details>
-<summary><b>6.4 — Install the Controller via Helm</b></summary>
-
-```bash
-# Install CRDs
-kubectl apply -k \
-  "github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master"
-
-# Add Helm repo
-helm repo add eks https://aws.github.io/eks-charts
-helm repo update
-
-VPC_ID=$(aws eks describe-cluster --name Akhilesh-cluster --region eu-west-1 \
-  --query "cluster.resourcesVpcConfig.vpcId" --output text)
-
-helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
-  -n kube-system \
-  --set clusterName=$cluster_name \
-  --set serviceAccount.create=false \
-  --set serviceAccount.name=aws-load-balancer-controller \
-  --set vpcId=$VPC_ID \
-  --set region=eu-west-1
-```
+![IAM Service Account](https://miro.medium.com/v2/resize:fit:700/1*5kCLDmn1AX2qmaivvME9wg.png)
 
 </details>
 
@@ -392,22 +379,16 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
 ### 7.1 — Tag Public Subnets for ALB
 
 > [!IMPORTANT]
-> The ALB controller **requires** the tag `kubernetes.io/role/elb=1` on public subnets. Without it, ALB creation will fail.
+> The ALB controller **requires** the tag `kubernetes.io/role/elb=1` on public subnets.
 
 ```bash
-VPC_ID=$(aws eks describe-cluster --name Akhilesh-cluster --region eu-west-1 \
-  --query "cluster.resourcesVpcConfig.vpcId" --output text)
-
-# List public subnets
-aws ec2 describe-subnets \
-  --filters "Name=vpc-id,Values=$VPC_ID" "Name=map-public-ip-on-launch,Values=true" \
-  --query "Subnets[*].{SubnetId:SubnetId,AZ:AvailabilityZone}"
-
-# Tag them (replace with your subnet IDs)
+# Tag them (replace with your subnet IDs from Step 3)
 aws ec2 create-tags \
   --resources <SUBNET_1> <SUBNET_2> <SUBNET_3> \
   --tags Key=kubernetes.io/role/elb,Value=1
 ```
+
+![Subnet Tagging Success](https://miro.medium.com/v2/resize:fit:700/1*74_D4X1fgXCsqscMF6mqyw.png)
 
 ### 7.2 — Apply the Ingress Resource
 
@@ -416,53 +397,15 @@ kubectl apply -f ingress.yaml
 
 # Verify
 kubectl get ingress -n 3-tier-app-eks
-kubectl describe ingress 3-tier-app-ingress -n 3-tier-app-eks
 ```
 
-<details>
-<summary>View the manifest — <code>ingress.yaml</code></summary>
+![Ingress Reconciled](https://miro.medium.com/v2/resize:fit:700/1*Iy8Sy7pyumUzy9Tw7Scy-Q.png)
 
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: IngressClass
-metadata:
-  name: alb
-spec:
-  controller: ingress.k8s.aws/alb
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: 3-tier-app-ingress
-  namespace: 3-tier-app-eks
-  annotations:
-    alb.ingress.kubernetes.io/scheme: "internet-facing"
-    alb.ingress.kubernetes.io/target-type: "ip"
-    alb.ingress.kubernetes.io/healthcheck-path: "/"
-spec:
-  ingressClassName: "alb"
-  rules:
-  - http:
-      paths:
-      - path: /api
-        pathType: Prefix
-        backend:
-          service:
-            name: backend
-            port:
-              number: 8000
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: frontend
-            port:
-              number: 80
-```
+Once the Ingress shows a **reconciled** status, an ALB is created. 
 
-</details>
+![ALB Provisioned](https://miro.medium.com/v2/resize:fit:700/1*edYV1dfcXHtEpuekvbfNcw.png)
 
-Once the Ingress shows a **reconciled** status, an ALB is created. Copy the ALB DNS from the AWS console and open it in your browser.
+![App Loading via ALB](https://miro.medium.com/v2/resize:fit:700/1*AhXAPTww7KqC09mO15rS8Q.png)
 
 ---
 
@@ -478,39 +421,7 @@ aws route53 create-hosted-zone \
   --hosted-zone-config Comment="Public hosted zone for yourdomain.com"
 ```
 
-Copy the **Name Servers** from the output and update them in your domain registrar (GoDaddy, Namecheap, etc.).
-
-</details>
-
-<details>
-<summary><b>8.2 — Create an Alias Record → ALB</b></summary>
-
-```bash
-ALB_DNS=$(kubectl get ingress 3-tier-app-ingress -n 3-tier-app-eks \
-  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-
-ZONE_ID=$(aws route53 list-hosted-zones-by-name --dns-name yourdomain.com \
-  --query "HostedZones[0].Id" --output text | sed 's/\/hostedzone\///')
-
-aws route53 change-resource-record-sets \
-  --hosted-zone-id $ZONE_ID \
-  --change-batch '{
-    "Changes": [{
-      "Action": "UPSERT",
-      "ResourceRecordSet": {
-        "Name": "app.yourdomain.com",
-        "Type": "A",
-        "AliasTarget": {
-          "HostedZoneId": "<ALB_HOSTED_ZONE_ID>",
-          "DNSName": "'$ALB_DNS'",
-          "EvaluateTargetHealth": true
-        }
-      }
-    }]
-  }'
-```
-
-Wait a few minutes for DNS propagation, then visit `app.yourdomain.com` 🎉
+![Route53 Hosted Zone](https://miro.medium.com/v2/resize:fit:700/1*wPGs8npRZ-TCYFBDOjNQkw.png)
 
 </details>
 
@@ -531,7 +442,11 @@ PGPASSWORD=YourStrongPassword123! psql -h \
   postgres-db.3-tier-app-eks.svc.cluster.local -U postgresadmin -d postgres
 ```
 
-**Common fix:** Ensure the RDS security group allows inbound on port `5432` from the EKS node security group.
+![Connectivity Issue Example](https://miro.medium.com/v2/resize:fit:700/1*j0Zn5lhcV8F1c94_vYIjKQ.png)
+
+**Common fix:** Ensure the RDS security group allows inbound on port `5432` from the EKS node security group. In some cases, opening all IPs for testing might confirm if it's a security group issue.
+
+![All IPs Test](https://miro.medium.com/v2/resize:fit:700/1*ISkiSMNvqVbcsjnqcJzR3Q.png)
 
 </details>
 
@@ -539,12 +454,11 @@ PGPASSWORD=YourStrongPassword123! psql -h \
 <summary><b>ALB not getting created?</b></summary>
 
 Check the controller logs:
+`kubectl logs -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller`
 
-```bash
-kubectl logs -n kube-system -l app.kubernetes.io/name=aws-load-balancer-controller
-```
+If you see tagging errors like below, you must tag your subnets correctly.
 
-**Common fix:** Tag public subnets with `kubernetes.io/role/elb=1` (see [Step 7.1](#71--tag-public-subnets-for-alb)).
+![Subnet Tagging Error](https://miro.medium.com/v2/resize:fit:700/1*MMV1QT-B2MU1FRxJDNMBLQ.png)
 
 </details>
 
